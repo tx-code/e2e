@@ -2,6 +2,7 @@ import { Builder } from 'selenium-webdriver';
 import edge from 'selenium-webdriver/edge.js';
 import { webdriver } from '@e2e-dev/webdriver';
 import type { E2EConfig } from 'e2e';
+import { testbedScreenshot } from './evidence.ts';
 
 export default {
   workers: 1, retries: 0, cache: 'off', trace: 'on', timeout: 90_000,
@@ -20,12 +21,7 @@ export default {
         const driver = await builder.build();
         return { driver, close: () => driver.quit() };
       },
-      async screenshot({ driver }) {
-        // The owned testbed has no secure fields; refuse if that premise changes.
-        const secure = await driver.executeScript<number>(() => document.querySelectorAll('input[type="password"], iframe').length);
-        if (secure !== 0) throw new Error('Screenshot masking is not available for this page');
-        return Buffer.from(await driver.takeScreenshot(), 'base64');
-      },
+      screenshot: testbedScreenshot,
     }),
   }],
 } satisfies E2EConfig;

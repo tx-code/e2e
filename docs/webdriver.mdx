@@ -110,6 +110,25 @@ dialog types cannot select files. File selection, saving and cancellation are
 mutating project tools and are not zero-call cache replays. Use a separate
 preparation step, then verify DOM goals with locator assertions.
 
+### Local screenshot evidence
+
+With a trusted `screenshot` provider configured, call
+`await app.screenshot('before-edit')` before a flow and
+`await app.screenshot('after-verification')` after its assertions. The runner
+attaches these files to the attempt's local report and trace. It also requests
+a failure screenshot when a test fails. A refused or unavailable screenshot
+must not be mistaken for evidence of success.
+
+The neutral WebDriver testbed demonstrates these checkpoints in its native
+Open/Save flow and in `tests/screenshots.e2e.ts`; `tests/failure.e2e.ts`
+demonstrates automatic failure capture. Its provider only accepts the owned
+testbed page without password inputs or frames. This fixture-specific guard
+is not a general masking solution for other applications.
+
+WebDriver screenshots cover the page viewport, not Windows file dialogs or
+the desktop. These report artifacts do not enable model vision and are not
+uploaded by the testbed. Keep screenshot directories out of source control.
+
 ### Timing and unsupported operations
 
 Enable `metrics: true` to record observation, locator, and reference-resolution

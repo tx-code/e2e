@@ -7,6 +7,7 @@ import { webdriver } from '@e2e-dev/webdriver';
 import { captureWindowsProcess, windowsDialogTools, type WindowsProcess } from '@e2e-dev/webdriver/windows';
 import { chatgpt } from 'e2e/oauth/chatgpt';
 import type { E2EConfig } from 'e2e';
+import { testbedScreenshot } from './evidence.ts';
 
 let owner: WindowsProcess | undefined;
 let saveDestination = '';
@@ -16,6 +17,7 @@ export default {
   workers: 1, retries: 0, cache: 'off', trace: 'on', timeout: 120000,
   targets: [{ name: 'native-edge', app: { url: 'http://127.0.0.1:4387', command: { executable: 'node', args: ['server.mjs'] } },
     engine: webdriver({ navigation: true,
+      screenshot: testbedScreenshot,
       async createSession(info, attempt) {
         await mkdir(directory, { recursive: true });
         await writeFile(sample, 'Neutral test data.');

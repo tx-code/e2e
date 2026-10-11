@@ -1,5 +1,19 @@
 # WebDriver testbed
 
+## Local screenshot checkpoints
+
+`tests/screenshots.e2e.ts` captures before a change and after its assertion,
+and checks that the provider refuses password fields. The native agent flow
+also captures before Open/Save and after saved-content verification. Run
+`tests/failure.e2e.ts` separately to verify automatic failure capture; its
+exit code must be 1.
+
+Screenshots appear in the local attempt artifacts and are linked from the
+report's trace. They show the page viewport, not native dialogs or the
+desktop, and are not sent to the model. The testbed's provider is restricted
+to its owned non-sensitive page, not a reusable application masking policy.
+All `.e2e*` evidence directories remain ignored by Git.
+
 This project consumes the built e2e and WebDriver packages. Its page is an
 independent form with native inputs, a select, a checkbox, and a field that
 can be replaced. No model or product-specific application is required.
