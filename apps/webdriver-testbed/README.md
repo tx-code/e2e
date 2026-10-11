@@ -71,12 +71,22 @@ node native-dialog-check.mjs --save --classic
 node native-dialog-check.mjs --cancel
 node native-dialog-check.mjs --foreign
 node native-dialog-check.mjs --error
+node native-dialog-check.mjs --auto
+node native-dialog-check.mjs --auto --save
+node native-dialog-check.mjs --auto --classic
+node native-dialog-check.mjs --auto --save --classic
+node native-dialog-check.mjs --multiple
 ```
 
 It opens an owned Windows file dialog, selects a registered text file,
 checks the dialog's returned path, and verifies that an unknown file,
 unowned window and changed process identity are refused. The cancel run
 checks the dialog's Cancel result. The fixture writes only under `.e2e-native`.
+
+`--auto` omits the window id for file operations. Each run also checks that
+the opposite dialog kind is refused. `--multiple` opens two independent
+Open dialogs in one owned process, checks that automatic selection refuses
+the ambiguity without closing either, then cancels both explicitly.
 The foreign-window check opens a second owned fixture and proves the first
 tool pack cannot select a file in its dialog. Fixture names include spaces
 and Unicode characters.

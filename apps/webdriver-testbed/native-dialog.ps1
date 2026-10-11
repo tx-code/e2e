@@ -1,5 +1,24 @@
-param([string]$ResultPath,[string]$InitialDirectory,[switch]$Classic,[switch]$ErrorDialog,[switch]$SaveDialog,[switch]$SaveAfterOpen)
+param([string]$ResultPath,[string]$InitialDirectory,[switch]$Classic,[switch]$ErrorDialog,[switch]$SaveDialog,[switch]$SaveAfterOpen,[switch]$Multiple)
 $ErrorActionPreference = 'Stop'
+if ($Multiple) {
+  $instances = @()
+  try {
+    foreach ($index in 1..2) {
+      $space = [runspacefactory]::CreateRunspace()
+      $space.ApartmentState = 'STA'
+      $space.ThreadOptions = 'ReuseThread'
+      $space.Open()
+      $instance = [powershell]::Create()
+      $instance.Runspace = $space
+      [void]$instance.AddCommand($PSCommandPath).AddParameter('ResultPath', "$ResultPath.$index").AddParameter('InitialDirectory', $InitialDirectory)
+      $instances += @{shell=$instance;space=$space;pending=$instance.BeginInvoke()}
+    }
+    foreach ($entry in $instances) { $entry.shell.EndInvoke($entry.pending) }
+  } finally {
+    foreach ($entry in $instances) { $entry.shell.Dispose(); $entry.space.Dispose() }
+  }
+  exit 0
+}
 Add-Type -AssemblyName System.Windows.Forms
 if ($ErrorDialog) {
   $result = [System.Windows.Forms.MessageBox]::Show('Neutral native failure marker', 'Fixture error', [System.Windows.Forms.MessageBoxButtons]::OK)

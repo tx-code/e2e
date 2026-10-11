@@ -1,9 +1,18 @@
 import { describe, it, expect } from 'vitest';
+import { z } from 'zod';
 import { captureWindowsProcess, windowsDialogTools } from '../src/windows.ts';
 
 const call = { toolCallId: 'test', messages: [], context: {} };
 
 describe('native dialog tool boundaries', () => {
+  it('allows automatic file-dialog selection but requires an explicit cancellation target', () => {
+    const tools = windowsDialogTools({ owner: () => undefined, files: { sample: 'sample.txt' }, saveFiles: { output: 'output.txt' } });
+    const schema = (name: string) => tools[name]!.tool.inputSchema as z.ZodType;
+    expect(schema('choose_native_file').safeParse({ file: 'sample' }).success).toBe(true);
+    expect(schema('save_native_file').safeParse({ destination: 'output' }).success).toBe(true);
+    expect(schema('choose_native_file').safeParse({ windowId: '', file: 'sample' }).success).toBe(false);
+    expect(schema('cancel_native_dialog').safeParse({}).success).toBe(false);
+  });
   it('does not act outside a host-owned attempt', async () => {
     const tools = windowsDialogTools({ owner: () => undefined, files: { sample: 'sample.txt' } });
     await expect(tools['native_windows']!.tool.execute!({}, call)).rejects.toMatchObject({ code: 'INVALID_STATE' });

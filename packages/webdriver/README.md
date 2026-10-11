@@ -46,6 +46,13 @@ can be callbacks returning a fresh path for each attempt. The agent gets:
 - `registered_files` reads existence and byte sizes, without reading contents.
 - `cancel_native_dialog` closes an owned native dialog.
 
+File selection and saving accept an optional `windowId`. Omit it to use
+the sole enabled, visible dialog of the requested kind in the owned
+process. Zero or multiple matches cause a refusal before input, not a
+guess. Inspect `native_windows` when disambiguation is needed. Cancellation
+still requires an explicit id. This removes the need to ask the model to
+look up an id in the single-dialog case; it does not enable cache replay.
+
 The helper runs in Windows PowerShell with a 15-second limit. It checks
 the process creation time and window owner, accepts no model-supplied
 paths or shell commands, and reads no file contents. Edit values are not

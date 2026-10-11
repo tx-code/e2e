@@ -96,6 +96,13 @@ closes an owned dialog. Every operation checks the process creation time
 and window ownership. No file contents, edit values, or screenshots are
 returned by these tools.
 
+For file selection and saving, `windowId` is optional. When omitted, the
+helper selects exactly one enabled, visible dialog of the requested kind
+within the owned process. Zero matches or multiple matches refuse the
+operation before typing or clicking. The agent can then inspect
+`native_windows` and supply an explicit id. Cancellation always requires an
+explicit id. Automatic selection does not retry or enable cache replay.
+
 The implementation uses Windows PowerShell and Windows messages, alongside
 the DOM WebDriver transport. Standard Open dialogs with English, Chinese,
 German, French or Portuguese Open and Save buttons are supported; other native

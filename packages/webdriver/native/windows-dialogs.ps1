@@ -113,8 +113,21 @@ public static class NativeDialogs {
     @{ok=$true;value=@{processExited=$false;windows=$windows}} | ConvertTo-Json -Depth 6 -Compress
     exit 0
   }
-  $dialog = [IntPtr]([long]$request.windowId)
+  if ($null -eq $request.windowId -and ($request.action -eq 'choose' -or $request.action -eq 'save')) {
+    $candidates = @([NativeDialogs]::Windows($targetId) | Where-Object {
+      $candidate = $_
+      if ([NativeDialogs]::Class($candidate) -ne '#32770' -or -not [NativeDialogs]::IsWindowEnabled($candidate)) { return $false }
+      $candidateEdit = [NativeDialogs]::FileEdit($candidate)
+      $candidateButton = if ($request.action -eq 'save') { [NativeDialogs]::SaveButton($candidate) } else { [NativeDialogs]::OpenButton($candidate) }
+      return $candidateEdit -ne [IntPtr]::Zero -and $candidateButton -ne [IntPtr]::Zero -and [NativeDialogs]::IsWindowEnabled($candidateEdit) -and [NativeDialogs]::IsWindowEnabled($candidateButton)
+    })
+    if ($candidates.Count -ne 1) { throw "Expected exactly one enabled native dialog for $($request.action); found $($candidates.Count). Inspect native_windows and provide windowId when appropriate." }
+    $dialog = $candidates[0]
+  } else {
+    $dialog = [IntPtr]([long]$request.windowId)
+  }
   if (-not [NativeDialogs]::Owned($dialog,$targetId) -or [NativeDialogs]::Class($dialog) -ne '#32770' -or -not [NativeDialogs]::IsWindowVisible($dialog)) { throw 'The target is not a visible dialog owned by this attempt' }
+  if (-not [NativeDialogs]::IsWindowEnabled($dialog)) { throw 'The target dialog is disabled' }
   if ($request.action -eq 'cancel') {
     $dispatched = $true
     if(-not [NativeDialogs]::PostMessage($dialog,16,[IntPtr]::Zero,[IntPtr]::Zero)){throw 'Dialog close request failed'}

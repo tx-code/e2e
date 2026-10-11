@@ -99,13 +99,13 @@ export function windowsDialogTools(options: {
       },
     }), { mutates: false }),
     native_windows: defineTool(nativeTool({
-      description: 'Read visible native windows and dialog text belonging to the current test process. Use when a file picker or modal is absent from the DOM. Returns window ids, filePicker for Open dialogs and savePicker for Save As dialogs. Does not read file contents or password values.',
+      description: 'Inspect owned native windows when diagnosing an unknown modal or resolving a refused file operation. Open and Save As tools locate a unique dialog themselves; calling this tool first is unnecessary for those operations. Returns window ids, filePicker for Open dialogs and savePicker for Save As dialogs. Does not read file contents or password values.',
       inputSchema: z.object({}),
       execute: async (_input, execution) => JSON.stringify(await native({ action: 'observe', owner: owner() }, execution.abortSignal)),
     }), { mutates: false }),
     choose_native_file: defineTool(nativeTool({
-      description: `Choose a registered file in an already-open native file picker. First read native_windows and use a window with filePicker=true. Available file aliases: ${names.join(', ')}. This only selects the file; verify import completion in the application afterward.`,
-      inputSchema: z.object({ windowId: z.string().regex(/^\d+$/), file: z.enum(names as [string, ...string[]]) }),
+      description: `Choose a registered file in an already-open native Open dialog. Omit windowId to select the sole enabled Open dialog owned by this test process. If none or several match, no action is taken; inspect native_windows to resolve the issue. Available file aliases: ${names.join(', ')}. This only selects the file; verify import completion in the application afterward.`,
+      inputSchema: z.object({ windowId: z.string().regex(/^\d+$/).optional(), file: z.enum(names as [string, ...string[]]) }),
       execute: async ({ windowId, file }, execution) => {
         if (!Object.hasOwn(files, file)) throw new ConfigurationError('INVALID_ARGUMENT', 'Unknown file alias');
         const selected = await realpath(files[file]!);
@@ -116,8 +116,8 @@ export function windowsDialogTools(options: {
       },
     }), { mutates: true }),
     ...(saveNames.length ? { save_native_file: defineTool(nativeTool({
-      description: `Choose a registered destination in an already-open native Save As dialog. First read native_windows and use savePicker=true. Destinations: ${saveNames.join(', ')}. Refuses existing files. Verify the application's saved file afterward.`,
-      inputSchema: z.object({ windowId: z.string().regex(/^\d+$/), destination: z.enum(saveNames as [string, ...string[]]) }),
+      description: `Choose a registered destination in an already-open native Save As dialog. Omit windowId to select the sole enabled Save As dialog owned by this test process. If none or several match, no action is taken; inspect native_windows to resolve the issue. Destinations: ${saveNames.join(', ')}. Refuses existing files. Verify the application's saved file afterward.`,
+      inputSchema: z.object({ windowId: z.string().regex(/^\d+$/).optional(), destination: z.enum(saveNames as [string, ...string[]]) }),
       execute: async ({ windowId, destination }, execution) => {
         if (!Object.hasOwn(saveFiles, destination)) throw new ConfigurationError('INVALID_ARGUMENT', 'Unknown save destination');
         const registered = saveFiles[destination]!;

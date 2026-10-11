@@ -12,11 +12,13 @@ const savedFile = path.join(directory, 'saved with spaces 测试.txt');
 await writeFile(file, 'Neutral native-dialog fixture.');
 const errorDialog = process.argv.includes('--error');
 const saveDialog = process.argv.includes('--save');
-const child = spawn('powershell.exe', ['-NoProfile', '-STA', '-File', 'native-dialog.ps1', '-ResultPath', resultFile, '-InitialDirectory', directory, ...(process.argv.includes('--classic') ? ['-Classic'] : []), ...(errorDialog ? ['-ErrorDialog'] : []), ...(saveDialog ? ['-SaveDialog'] : [])], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
+const multiple = process.argv.includes('--multiple');
+const child = spawn('powershell.exe', ['-NoProfile', '-STA', '-File', 'native-dialog.ps1', '-ResultPath', resultFile, '-InitialDirectory', directory, ...(process.argv.includes('--classic') ? ['-Classic'] : []), ...(errorDialog ? ['-ErrorDialog'] : []), ...(saveDialog ? ['-SaveDialog'] : []), ...(multiple ? ['-Multiple'] : [])], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
 let hostError = '';
 child.stderr.on('data', (chunk) => { hostError += chunk.toString(); });
 let owner;
 let other;
+async function run() {
 try {
   owner = await captureWindowsProcess(child.pid);
   const tools = windowsDialogTools({ owner: () => owner, files: { sample: file }, saveFiles: { output: savedFile, existing: file } });
@@ -28,12 +30,21 @@ try {
   let observed;
   for (let index = 0; index < 8; index++) {
     observed = JSON.parse(await invoke('native_windows', {}));
-    if (observed.windows.some((window) => errorDialog ? window.title === 'Fixture error' : saveDialog ? window.savePicker : window.filePicker)) break;
+    if (multiple ? observed.windows.filter((window) => window.filePicker && window.enabled).length === 2 : observed.windows.some((window) => errorDialog ? window.title === 'Fixture error' : saveDialog ? window.savePicker : window.filePicker)) break;
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
   await writeFile(path.join(directory, 'windows.json'), JSON.stringify(observed, null, 2));
   const picker = observed.windows.find((window) => errorDialog ? window.title === 'Fixture error' : saveDialog ? window.savePicker : window.filePicker);
   assert.ok(picker, `No supported file picker. Evidence: ${directory}`);
+  if (multiple) {
+    assert.equal(observed.windows.filter((window) => window.filePicker && window.enabled).length, 2);
+    await assert.rejects(() => invoke('choose_native_file', { file: 'sample' }), /found 2/);
+    const after = JSON.parse(await invoke('native_windows', {}));
+    assert.equal(after.windows.filter((window) => window.filePicker && window.enabled).length, 2);
+    for (const dialog of after.windows.filter((window) => window.filePicker)) await invoke('cancel_native_dialog', { windowId: dialog.id });
+    console.log(JSON.stringify({ status: 'passed', directory, ambiguousSelectionRefused: true }));
+    return;
+  }
   if (errorDialog) {
     assert.equal(picker.filePicker, false);
     assert.ok(JSON.stringify(picker).includes('Neutral native failure marker'));
@@ -61,13 +72,17 @@ try {
   await assert.rejects(() => invoke('choose_native_file', { windowId: picker.id, file: 'unregistered' }));
   await assert.rejects(() => invoke('choose_native_file', { windowId: '0', file: 'sample' }));
   const cancel = process.argv.includes('--cancel') || errorDialog;
+  const target = process.argv.includes('--auto') ? {} : { windowId: picker.id };
+  if (errorDialog) await assert.rejects(() => invoke('choose_native_file', { file: 'sample' }), /found 0/);
+  else if (saveDialog) await assert.rejects(() => invoke('choose_native_file', { file: 'sample' }), /found 0/);
+  else await assert.rejects(() => invoke('save_native_file', { destination: 'output' }), /found 0/);
   if (cancel) await invoke('cancel_native_dialog', { windowId: picker.id });
   else if (saveDialog) {
     await assert.rejects(() => invoke('save_native_file', { windowId: picker.id, destination: 'existing' }));
     await assert.rejects(() => invoke('save_native_file', { windowId: picker.id, destination: 'unknown' }));
-    await invoke('save_native_file', { windowId: picker.id, destination: 'output' });
+    await invoke('save_native_file', { ...target, destination: 'output' });
   }
-  else await invoke('choose_native_file', { windowId: picker.id, file: 'sample' });
+  else await invoke('choose_native_file', { ...target, file: 'sample' });
   let selected;
   for (let index = 0; index < 40; index++) {
     try { selected = JSON.parse((await readFile(resultFile, 'utf8')).replace(/^\uFEFF/, '')); break; } catch {}
@@ -87,3 +102,5 @@ try {
   if (other && other.exitCode === null && !other.killed) other.kill();
   await writeFile(path.join(directory, 'host.log'), hostError);
 }
+}
+await run();
