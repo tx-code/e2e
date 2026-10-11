@@ -47,3 +47,41 @@ Summarize one or more reports without modifying the originals:
 ```sh
 node summarize-benchmark.mjs .e2e-benchmark/report.json
 ```
+
+## Native Windows dialogs
+
+After building the engine, run the independent native fixture:
+
+```sh
+node native-dialog-check.mjs
+node native-dialog-check.mjs --classic
+node native-dialog-check.mjs --save
+node native-dialog-check.mjs --save --classic
+node native-dialog-check.mjs --cancel
+node native-dialog-check.mjs --foreign
+node native-dialog-check.mjs --error
+```
+
+It opens an owned Windows file dialog, selects a registered text file,
+checks the dialog's returned path, and verifies that an unknown file,
+unowned window and changed process identity are refused. The cancel run
+checks the dialog's Cancel result. The fixture writes only under `.e2e-native`.
+The foreign-window check opens a second owned fixture and proves the first
+tool pack cannot select a file in its dialog. Fixture names include spaces
+and Unicode characters.
+The error-dialog check reads a native error message, refuses file selection
+in that window, and dismisses it.
+The save checks verify the returned destination and actual file contents,
+reject overwriting an existing file, and confirm the original stays unchanged.
+
+The real agent test uses the same subscription login as the replay test:
+
+```sh
+node node_modules/e2e/dist/cli/bin.js run tests/native.e2e.ts --config e2e.native.config.ts --output .e2e-native-agent --reporter list,junit,markdown
+```
+
+The agent opens the registered file, saves a copy through Save As, and fills
+the web form. The test checks both returned paths, saved content, original
+content and the web field. Add `--repeat-each 3 --max-failures 1` to check
+repeatability with fresh sessions and destinations. This test has the cache
+off because native mutating tools are replay gaps.

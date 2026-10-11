@@ -618,6 +618,9 @@ importers:
       selenium-webdriver:
         specifier: 4.48.0
         version: 4.48.0
+      zod:
+        specifier: 4.6.1
+        version: 4.6.1
     devDependencies:
       '@types/node':
         specifier: 26.6.2

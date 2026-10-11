@@ -77,6 +77,34 @@ changed controls can hand execution back to the model. See [Caching](/cache).
 
 ## Measurements and limits
 
+### Native Windows file dialogs
+
+The optional `@e2e-dev/webdriver/windows` entry adds native window tools.
+The factory captures the process it owns with `captureWindowsProcess(pid)`;
+`windowsDialogTools({ owner, files, saveFiles })` returns tools for the agent's `tools`
+configuration. `owner` returns that identity while the attempt is active,
+and `files` maps aliases to trusted local paths. Optional `saveFiles` maps
+destination aliases to new file paths, or callbacks returning a fresh
+path for the current attempt.
+
+`native_windows` reads owned windows and dialogs. `choose_native_file`
+selects a configured alias in an open file picker. `save_native_file`
+submits a configured Save As destination and refuses existing paths.
+`registered_files` reads file existence and byte sizes, not contents.
+`cancel_native_dialog`
+closes an owned dialog. Every operation checks the process creation time
+and window ownership. No file contents, edit values, or screenshots are
+returned by these tools.
+
+The implementation uses Windows PowerShell and Windows messages, alongside
+the DOM WebDriver transport. Standard Open dialogs with English, Chinese,
+German, French or Portuguese Open and Save buttons are supported; other native
+dialog types cannot select files. File selection, saving and cancellation are
+mutating project tools and are not zero-call cache replays. Use a separate
+preparation step, then verify DOM goals with locator assertions.
+
+### Timing and unsupported operations
+
 Enable `metrics: true` to record observation, locator, and reference-resolution
 times through the local app-log channel. No document content is included in
 those measurements. Read model usage and cache outcomes separately from
