@@ -20,6 +20,7 @@ export default {
   targets: [{ name: 'native-edge', app: { url: 'http://127.0.0.1:4387', command: { executable: 'node', args: ['server.mjs'] } },
     engine: webdriver({ navigation: true,
       screenshot: testbedScreenshot,
+      video: { fps: 2, ffmpegPath: process.env.FFMPEG_PATH ?? 'ffmpeg' },
       async createSession(info, attempt) {
         await mkdir(directory, { recursive: true });
         await writeFile(sample, 'Neutral test data.');

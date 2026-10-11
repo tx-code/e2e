@@ -22,6 +22,7 @@ export default {
         return { driver, close: () => driver.quit() };
       },
       screenshot: testbedScreenshot,
+      video: { fps: 2, ffmpegPath: process.env.FFMPEG_PATH ?? 'ffmpeg' },
     }),
   }],
 } satisfies E2EConfig;

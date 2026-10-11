@@ -16,7 +16,7 @@ CSS or XPath for attributes that have no semantic query. Run the suite with
 the built e2e CLI, including `--repeat-each` for repeatability checks.
 
 The initial implementation reads the main document's native DOM. Frames,
-shadow roots, remote Grid deployments, coordinate actions, video, and saved
+shadow roots, remote Grid deployments, coordinate actions, and saved
 sessions are not implemented. Navigation is opt-in. The initial verification
 target is Edge; other browsers need their own verification.
 
@@ -31,6 +31,35 @@ Set `metrics: true` to record operation names and milliseconds through e2e's
 local app-log channel. The measurements contain no selectors, field values,
 or document text. They distinguish document observation and reference
 resolution from the model's time choosing an action.
+
+## Page-only video
+
+Configure `video: { fps: 2, ffmpegPath: 'ffmpeg' }` alongside a trusted
+`screenshot` provider, then enable recording with the runner's `--video`
+flag or `video: 'on'` recording mode. The engine option declares capability;
+it does not start recording when the runner's mode is off. FFmpeg must be
+installed separately with the `libx264` encoder. Paths are executable paths,
+not shell commands. No desktop-capture input is used.
+
+The sampler captures page-only PNGs at up to 2 fps by default (configurable
+from 1 to 5), then writes a local H.264 MP4 using elapsed sample times. Slow
+captures lower the actual frame rate; this is a low-frame-rate record, not
+smooth screen capture. The last sample is captured at stop. The report links
+the video and shows approximate step timestamps. No audio, pointer overlay,
+native dialogs, other windows or annotation overlays are recorded.
+
+Every frame uses the source-masked screenshot provider. Startup blank pages
+are skipped. A masking refusal, viewport resize, capture timeout or encoder
+failure rejects the video; there is no unmasked fallback. Inspect the report's
+cleanup errors, not only the test verdict: e2e preserves a passing assertion
+verdict when evidence cleanup fails. An empty/never-opened page returns no video.
+
+Recording is bounded to 10 minutes of captured page time, 3000 frames and
+128 MB of PNG inputs; each capture has 3 seconds and encoding has at most
+15 seconds within the runner cleanup budget. Owned temporary frames are
+removed on stop/dispose. MP4s remain local under the attempt's `video/`
+directory unless a custom artifact store uploads them. Recording and
+encoding add overhead; leave the recording mode off when not needed.
 
 ## Annotated screenshot evidence
 

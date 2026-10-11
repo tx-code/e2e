@@ -12,6 +12,16 @@ const attempt = (signal = new AbortController().signal): EngineAttemptContext =>
 });
 
 describe('session ownership', () => {
+  it('requires explicit video configuration and a masked screenshot provider', () => {
+    const createSession = async () => { throw new Error('not started'); };
+    expect(() => webdriver({ createSession, video: {} })).toThrow('screenshot');
+    expect(() => webdriver({ createSession, screenshot: async () => new Uint8Array(), video: { fps: 0 } })).toThrow('fps');
+    const screenshots = webdriver({ createSession, screenshot: async () => new Uint8Array() });
+    expect(screenshots.artifacts?.startVideo).toBeUndefined();
+    const recording = webdriver({ createSession, screenshot: async () => new Uint8Array(), video: {} });
+    expect(recording.artifacts?.startVideo).toBeTypeOf('function');
+    expect(recording.artifacts?.stopVideo).toBeTypeOf('function');
+  });
   it('releases each claimed session exactly once, including repeated cleanup', async () => {
     const close = vi.fn(async () => {});
     const driver = { manage: () => ({ setTimeouts: async () => {} }) } as unknown as WebDriver;

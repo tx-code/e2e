@@ -1,5 +1,19 @@
 # WebDriver testbed
 
+## Page recordings
+
+Both configs declare sampled page video at 2 fps. Install FFmpeg with
+`libx264` on PATH, or set `FFMPEG_PATH` to its executable. Add `--video` to
+the CLI command for `tests/controls.e2e.ts` or the native agent flow to
+record; without the flag no recording occurs. The report links a local MP4
+and step times. File dialogs and the desktop are not in the video.
+
+`tests/failure.e2e.ts --video` verifies that failed assertions keep video.
+`tests/screenshots.e2e.ts --video` exercises a masking refusal: the secure
+input test keeps its passed assertions but reports failed evidence cleanup
+and has no MP4. This distinction is intentional in the runner's verdict
+contract; consumers must inspect cleanup errors, not only exit codes.
+
 ## Local screenshot checkpoints
 
 The native config also registers `annotate_screenshot`. Run

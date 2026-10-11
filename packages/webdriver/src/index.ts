@@ -9,6 +9,7 @@ import {
   type OperationContext, type SemanticNode,
 } from 'e2e/engine';
 import { captureDocument, elementByRef, type DomCapture } from './dom.ts';
+import { PageVideoRecorder } from './video.ts';
 import type { Locator } from 'e2e';
 import { test as base, describe, beforeEach, afterEach, beforeAll, afterAll, expect } from 'e2e';
 
@@ -31,6 +32,8 @@ export interface WebDriverOptions {
   readonly metrics?: boolean;
   /** Returns source-masked PNG bytes. Omit when the host cannot prove masking. */
   readonly screenshot?: (session: WebDriverSession, context: OperationContext) => Promise<Uint8Array>;
+  /** Page-only sampled MP4. Requires a source-masked screenshot provider and FFmpeg with libx264. */
+  readonly video?: { readonly ffmpegPath?: string; readonly fps?: number };
 }
 
 export interface WebDriverFixture {
@@ -43,12 +46,18 @@ export const test = base.extend<{ webdriver: WebDriverFixture }>();
 
 /** Creates a WebDriver engine using only the public e2e engine contract. */
 export function webdriver(options: WebDriverOptions): EngineHandle {
-  rejectUnknownKeys('webdriver()', options, ['createSession', 'navigation', 'testIdAttribute', 'workers', 'metrics', 'screenshot']);
+  rejectUnknownKeys('webdriver()', options, ['createSession', 'navigation', 'testIdAttribute', 'workers', 'metrics', 'screenshot', 'video']);
   if (typeof options.createSession !== 'function') throw new ConfigurationError('INVALID_CONFIG', 'webdriver() requires createSession');
   if (options.navigation !== undefined && typeof options.navigation !== 'boolean') throw new ConfigurationError('INVALID_CONFIG', 'webdriver() navigation must be boolean');
   if (options.metrics !== undefined && typeof options.metrics !== 'boolean') throw new ConfigurationError('INVALID_CONFIG', 'webdriver() metrics must be boolean');
   if (options.testIdAttribute !== undefined && (typeof options.testIdAttribute !== 'string' || !options.testIdAttribute.trim())) throw new ConfigurationError('INVALID_CONFIG', 'webdriver() testIdAttribute must be a nonempty string');
   if (options.screenshot !== undefined && typeof options.screenshot !== 'function') throw new ConfigurationError('INVALID_CONFIG', 'webdriver() screenshot must be a source-masked PNG callback');
+  if (options.video !== undefined) {
+    if (!options.video || typeof options.video !== 'object' || Array.isArray(options.video) || !options.screenshot) throw new ConfigurationError('INVALID_CONFIG', 'WebDriver video requires options and a source-masked screenshot provider');
+    rejectUnknownKeys('webdriver().video', options.video, ['ffmpegPath', 'fps']);
+    if (options.video.fps !== undefined && (!Number.isFinite(options.video.fps) || options.video.fps < 1 || options.video.fps > 5)) throw new ConfigurationError('INVALID_CONFIG', 'Video fps must be between 1 and 5');
+    if (options.video.ffmpegPath !== undefined && (typeof options.video.ffmpegPath !== 'string' || !options.video.ffmpegPath.trim())) throw new ConfigurationError('INVALID_CONFIG', 'Video ffmpegPath must be a nonempty executable path');
+  }
   const surface = new WebDriverSurface(options);
   const require = createRequire(import.meta.url);
   const { version } = require('../package.json') as { version: string };
@@ -66,7 +75,10 @@ export function webdriver(options: WebDriverOptions): EngineHandle {
       open: (url: string, context: OperationContext) => surface.command(context, () => surface.driver().get(url), true),
       back: (context: OperationContext) => surface.command(context, () => surface.driver().navigate().back(), true),
     } } : {}),
-    ...(options.screenshot === undefined ? {} : { artifacts: { screenshot: (label, context) => surface.screenshot(label, context) } }),
+    ...(options.screenshot === undefined ? {} : { artifacts: {
+      screenshot: (label, context) => surface.screenshot(label, context),
+      ...(options.video === undefined ? {} : { startVideo: (context: OperationContext) => surface.startVideo(context), stopVideo: (context: OperationContext) => surface.stopVideo(context) }),
+    } }),
     fixtures: { webdriver: (context) => context.fixture<WebDriverFixture>('webdriver', {
       locator: (selector) => context.locator({ kind: 'selector', selector }),
       evaluate: <T, A = undefined>(fn: (arg: A) => T, arg?: A) => surface.command(context.operation(), () => surface.driver().executeScript<T>(fn, arg)),
@@ -80,6 +92,7 @@ class WebDriverSurface {
   private session: WebDriverSession | undefined;
   private attempt: EngineAttemptContext | undefined;
   private artifactIndex = 0;
+  private recorder: PageVideoRecorder | undefined;
 
   constructor(private readonly options: WebDriverOptions) {}
 
@@ -100,6 +113,8 @@ class WebDriverSurface {
 
   /** Releases only resources claimed by this attempt, also after a partial start. */
   async close(): Promise<void> {
+    await this.recorder?.dispose();
+    this.recorder = undefined;
     const session = this.session;
     this.session = undefined;
     this.attempt = undefined;
@@ -110,6 +125,34 @@ class WebDriverSurface {
   driver(): WebDriver {
     if (!this.session) throw new EngineError('INVALID_STATE', 'No active WebDriver session', { retryable: false });
     return this.session.driver;
+  }
+
+  /** Starts an opt-in page-only sampler, deferring blank startup pages. */
+  async startVideo(context: OperationContext): Promise<void> {
+    if (!this.session || !this.attempt || !this.options.video || !this.options.screenshot) throw new EngineError('UNSUPPORTED_CAPABILITY', 'No active page video provider', { retryable: false });
+    if (this.recorder) throw new EngineError('INVALID_STATE', 'Page recording is already active', { retryable: false });
+    const session = this.session;
+    const recorder = new PageVideoRecorder({
+      artifactsDir: this.attempt.artifactsDir,
+      executable: this.options.video.ffmpegPath ?? 'ffmpeg', fps: this.options.video.fps ?? 2,
+      capture: (signal) => this.command({ ...context, signal, timeoutMs: 3000 }, async () => {
+        if (this.session !== session) throw new EngineError('INVALID_STATE', 'Recording session changed', { retryable: false });
+        const url = await session.driver.getCurrentUrl();
+        if (url === 'about:blank' || url === 'data:,') return undefined;
+        return this.options.screenshot!(session, { ...context, signal, timeoutMs: 3000 });
+      }),
+    });
+    this.recorder = recorder;
+    try { await recorder.start(context.signal); }
+    catch (error) { await recorder.dispose(); this.recorder = undefined; throw error; }
+  }
+
+  /** Encodes and returns video through the runner's existing artifact contract. */
+  async stopVideo(context: OperationContext) {
+    const recorder = this.recorder;
+    if (!recorder) return [];
+    try { return await recorder.stop(AbortSignal.any([context.signal, AbortSignal.timeout(Math.max(1, context.timeoutMs))])); }
+    finally { this.recorder = undefined; }
   }
 
   /** One bounded operation; a lost write response is never retried as a read failure. */

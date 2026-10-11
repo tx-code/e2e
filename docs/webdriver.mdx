@@ -156,6 +156,32 @@ use a separate evidence goal with caching disabled. See the neutral
 testbed's `tests/annotations.e2e.ts` and `e2e.native.config.ts` for a working
 natural-language example.
 
+### Page-only video recording
+
+The engine accepts `video: { fps: 2, ffmpegPath: 'ffmpeg' }` when a trusted
+source-masked screenshot provider is configured. Enable the runner's
+`--video` flag or `video: 'on'` mode to record. Without that recording mode,
+no sampler or encoder runs. FFmpeg with `libx264` must be installed locally.
+
+The engine samples page screenshots (default 2 fps, configurable 1 to 5)
+and encodes a local H.264 MP4 using elapsed capture times. The report attaches
+the MP4 and shows approximate video positions for steps. This is a sampled
+page recording, not smooth desktop video. It includes no desktop, native
+file dialogs, audio, pointer or annotation overlays, and sends no frames to
+the model. A custom uploading artifact store would change local retention.
+
+Startup blank pages are skipped. Capture refusal, viewport size changes,
+timeouts or encoder failure reject the video, with no unmasked fallback.
+Check report cleanup errors as well as the assertion verdict: evidence
+cleanup failure does not replace a passed test verdict in e2e. An attempt
+that never displays a page has no segment.
+
+Capture stops at 10 minutes of page frames, 3000 frames or 128 MB of PNG data.
+Each capture has a 3-second budget; encoding has at most 15 seconds within
+the runner cleanup budget. Temporary frames are removed on stop/dispose.
+The final MP4 lives under the attempt's `video/` directory. Sampling and
+encoding add overhead, so enable recording only for runs that need it.
+
 ### Timing and unsupported operations
 
 Enable `metrics: true` to record observation, locator, and reference-resolution
@@ -165,7 +191,7 @@ the e2e report; `agent.act` time includes model and input-dispatch latency.
 
 The initial verification target is Edge on Windows. Native main-document
 DOM queries and common input actions are implemented. Frames, shadow roots,
-Grid deployments, focused-field keyboard tools, coordinates, videos, and
+Grid deployments, focused-field keyboard tools, coordinates, and
 saved sessions have not been implemented or verified. Unsupported actions
 are not advertised to the agent.
 
