@@ -45,6 +45,5 @@ describe('projectRelativePath', () => {
     expect(projectRelativePath('/repo/app', '/repo/app-shared/helpers.ts')).toBeUndefined();
   });
 
-  // A relative result that is itself absolute (a file on another drive) only
-  // arises from path.win32, which the function does not use; it has no POSIX case.
+  // Different-drive paths are covered by source-windows.test.ts on every platform.
 });

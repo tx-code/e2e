@@ -43,6 +43,12 @@ test('adds an item', async ({ app, agent, screen }) => {
 `step.cache.write`, in the report only, says what happened to the recording
 when the attempt ended:
 
+The terminal's `Recording` rows and the Markdown summary also explain
+`unconfirmed`, `not-written`, and `no-change` outcomes, including when every
+test passed. These count recording attempts across retries. A plain-value
+assertion can pass without confirming an action recording; use a locator
+assertion or `agent.assert` to verify the result.
+
 | `step.cache.write` | Meaning |
 | --- | --- |
 | `saved` | Recorded for the next run. |
@@ -51,6 +57,12 @@ when the attempt ended:
 | `evicted` | The entry was deleted: its replay ended in a failure or a repair, or no check confirmed it before the attempt failed. |
 | `no-change` | Nothing recorded: no control appeared, went away, or changed state, and the route stayed the same. A step that took no action records nothing either. |
 | `not-written` | Not saved: the store didn't write the recording, for example one over the file store's size limit. |
+
+Provider prompt caching is separate from action replay. The terminal labels
+its percentage as `input cached by provider`, using input tokens as the
+denominator. Markdown reports the number of `provider-cached input tokens`.
+These tokens still came from model calls. Only a fully replayed action step
+avoids those calls.
 
 A failing attempt still saves the steps verified before the failure. It
 deletes unverified entries and the replays involved in the failure. A custom store needs a `delete` method for this. Cancelling

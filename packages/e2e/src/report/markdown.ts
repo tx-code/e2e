@@ -22,7 +22,7 @@ import path from 'node:path';
 import { collapseText } from '../internal/text.ts';
 import type { Report1Document, ReportError, ReportExplore, ReportExploreFinding, ReportResult, ReportStep, ReportTarget } from './build.ts';
 import { ENDED_TEXT, orderFindings, SEVERITY_WORDS, stepCountParts } from './explore-text.ts';
-import { formatCost, formatTokens, repeatSuffix, statusBucket, tally, type Counters } from './format.ts';
+import { cacheWriteHints, formatCost, formatTokens, repeatSuffix, statusBucket, stepsCacheTally, tally, type Counters } from './format.ts';
 import { repeatGroups, repeatLine, repeatSummary, type RepeatGroup } from './repeats.ts';
 import {
   attemptsLine,
@@ -158,7 +158,7 @@ function agentTotals(steps: readonly ReportStep[]): { steps: number; replayed: n
 }
 
 /**
- * `41 agent steps · 12 replayed from cache · 128.4k tokens (62% cached) · $0.31`,
+ * Agent steps, action replays, model calls, tokens, provider-cached input tokens and cost,
  * under the headline of a run that used the agent; a deterministic run has
  * nothing to say here.
  */
@@ -170,7 +170,7 @@ function spendLine(run: ReportRun, entries: readonly Entry[]): string | undefine
   if (totals.calls > 0) parts.push(plural(totals.calls, 'model call'));
   if (run.usage.modelTokens > 0) {
     const cached = run.usage.modelCachedTokens ?? 0;
-    const share = cached === 0 ? '' : ` (${Math.round((cached / run.usage.modelTokens) * 100)}% cached)`;
+    const share = cached === 0 ? '' : ` (${formatTokens(cached)} provider-cached input tokens)`;
     parts.push(`${formatTokens(run.usage.modelTokens)} tokens${share}`);
   }
   if (run.usage.estimatedCostUsd !== undefined) parts.push(formatCost(run.usage.estimatedCostUsd));
@@ -540,14 +540,16 @@ export function renderMarkdownReport(report: Report1Document, options: MarkdownR
   );
 
   const spend = spendLine(run, entries);
+  const recordingHints = cacheWriteHints(stepsCacheTally(entries.flatMap((entry) => entry.final.attempts.map((attempt) => attempt.steps))));
   const head = [explore === undefined ? headline(run, selected, options) : exploreHeadline(run, selected, explore, options), ...(spend === undefined ? [] : [spend]), ''];
   const groups = fileGroups(entries);
   const sections =
     explore === undefined
-      ? [errors, ...failures, flaky, repeatsSection(entries, manyTargets), allTests(groups, selected.length, manyTargets)]
+      ? [errors, recordingHints, ...failures, flaky, repeatsSection(entries, manyTargets), allTests(groups, selected.length, manyTargets)]
       : [
           [`**Goal:** ${cell(explore.goal, MAX_GOAL_CHARS)}  `, `**Steps:** ${exploreSteps(explore)}`],
           errors,
+          recordingHints,
           ...failures,
           flaky,
           findingsSection(run, explore, options),

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { visibleWidth } from '../../src/report/format.ts';
 import { ListReporter } from '../../src/report/list.ts';
@@ -444,9 +444,10 @@ describe('ListReporter', () => {
     });
 
     it('resolves file URLs and strips module-cache query strings', () => {
-      const stack = `    at async Object.fn (file://${root}/tests/login.e2e.ts?worker-collect-1:7:3)`;
+      const file = path.join(root, 'tests', 'login.e2e.ts');
+      const stack = `    at async Object.fn (${pathToFileURL(file).href}?worker-collect-1:7:3)`;
       expect(userFrame(stack, root)).toEqual({
-        file: `${root}/tests/login.e2e.ts`,
+        file,
         line: 7,
         column: 3,
       });
@@ -619,6 +620,34 @@ describe('ListReporter', () => {
       reporter.handle(runFinished({ reportPath: 'r.json' }));
       const ai = lines.findIndex((line) => line.trimStart().startsWith('AI'));
       expect(lines[ai + 1]).toBe('      Cache  2 replayed · 1 handed off');
+    });
+
+    it('separates provider caching from an unconfirmed action recording', () => {
+      const { lines, output } = capture();
+      const reporter = plainReporter(output);
+      reporter.handle(plan([{ file: 'tests/a.e2e.ts', tests: 1 }]));
+      const step = {
+        id: 's1', index: 0, kind: 'agent', api: 'agent.act', label: 'fill a field', status: 'passed',
+        startedAt: new Date(0).toISOString(), durationMs: 10, events: [], artifacts: [],
+        model: { provider: 'test', model: 'scripted', calls: 1, inputTokens: 100, outputTokens: 900, cacheReadTokens: 80 },
+        cache: { mode: 'missed', reason: 'no-entry', replayedActions: 0, totalActions: 1, write: 'unconfirmed' },
+      } as unknown as AttemptRecord['steps'][number];
+      reporter.handle(finished(result({ status: 'passed', file: 'tests/a.e2e.ts', attempts: [attempt({ steps: [step] })] })));
+      reporter.handle(runFinished({ reportPath: 'r.json' }));
+      expect(lines.join('\n')).toContain('80% input cached by provider');
+      expect(lines.join('\n')).toContain('1 recording attempt not saved: no later verification passed. Add or fix a locator assertion or agent.assert.');
+    });
+
+    it('keeps hosted artifact URLs when the project root is the current directory', () => {
+      const { lines, output } = capture();
+      const reporter = plainReporter(output);
+      reporter.handle(runStarted({ projectRoot: process.cwd() }));
+      reporter.handle(plan([{ file: 'tests/a.e2e.ts', tests: 1 }]));
+      const record = failedAttempt('sample failure');
+      record.artifacts.push({ id: 'video', kind: 'video', mediaType: 'video/webm', url: 'https://example.test/video.webm', startedAt: new Date(0).toISOString(), redaction: 'complete', producer: { kind: 'attempt' } });
+      reporter.handle(finished(result({ status: 'failed', file: 'tests/a.e2e.ts', attempts: [record] })));
+      reporter.handle(runFinished({ status: 'failed', exitCode: 1 }));
+      expect(lines).toContain(' ❯ video https://example.test/video.webm');
     });
 
     it('names the interrupt from run-finished alone when the host aborted without the event', () => {
@@ -1347,7 +1376,7 @@ function expectGolden(name: string, text: string): void {
     writeFileSync(file, text);
   }
   expect(existsSync(file), `${file} is missing; run with E2E_GOLDEN_UPDATE=1`).toBe(true);
-  expect(text).toBe(readFileSync(file, 'utf8'));
+  expect(text).toBe(readFileSync(file, 'utf8').replaceAll('\r\n', '\n'));
 }
 
 /** Masks what differs between releases and machines: the package version and, when given, a temporary project root. */

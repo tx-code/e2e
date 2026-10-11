@@ -9,6 +9,11 @@ lists every step, links the evidence, and shows the screen at failure. For a
 summary of the whole run, add the `markdown` reporter. It writes
 `.e2e/summary.md`.
 
+Source locations recognize Windows drive paths and file URLs as well as
+POSIX paths. Files under the project and artifact links use project-relative
+paths with `/` separators. Dependency frames are skipped with either path
+separator, so a failure points to the calling test when its stack includes it.
+
 ## Read the failure
 
 The `list` reporter's `Failed Tests` section shows the error, the failing

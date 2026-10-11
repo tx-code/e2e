@@ -48,6 +48,17 @@ Summarize one or more reports without modifying the originals:
 node summarize-benchmark.mjs .e2e-benchmark/report.json
 ```
 
+## Reporter diagnostics
+
+The reporter fixture uses a deterministic executor and no model service.
+One passing test deliberately uses a plain-value assertion; the other uses
+a locator assertion. Run both twice to check that only the verified goal
+replays and that the summary explains the unconfirmed recordings:
+
+```sh
+node node_modules/e2e/dist/cli/bin.js run tests/report-diagnostics.e2e.ts --config e2e.report.config.ts --repeat-each 2 --output .e2e-report-diagnostics --reporter list,junit,markdown
+```
+
 ## Native Windows dialogs
 
 After building the engine, run the independent native fixture:

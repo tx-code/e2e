@@ -11,6 +11,7 @@ import picocolors from 'picocolors';
 import type { SerializedError } from '../internal/errors.ts';
 import { resultId } from '../internal/ids.ts';
 import { packageVersion } from '../internal/package-version.ts';
+import { projectRelativePath } from '../internal/source.ts';
 import type { RunEvent, RunEventFact, RunEventOf, RunEventResult, SetupStep } from '../run/events.ts';
 import type { AppLogRecord } from '../run/steps.ts';
 import { failureBeforeSkip, type ArtifactRecord, type AttemptRecord, type FailureEvidence, type ResultStatus, type SerialGroupRecord } from '../run/records.ts';
@@ -23,6 +24,7 @@ import {
   aiSegment,
   bounded,
   cacheText,
+  cacheWriteHints,
   durationText,
   fitColumns,
   emptyCacheTally,
@@ -472,9 +474,7 @@ export class ListReporter implements Reporter {
 
   /** A path relative to the project root when inside it, else as given. */
   private displayPath(target: string): string {
-    const inside =
-      this.projectRoot !== undefined && target.startsWith(`${this.projectRoot}${path.sep}`);
-    return bounded(inside ? path.relative(this.projectRoot!, target) : target);
+    return bounded((this.projectRoot === undefined ? undefined : projectRelativePath(this.projectRoot, target)) ?? target);
   }
 
   private group(file: string, target: string): FileGroup {
@@ -872,6 +872,7 @@ export class ListReporter implements Reporter {
     }
     const cache = cacheText(pc, this.runCache);
     if (cache !== undefined) rows.push(padTitle(pc, 'Cache') + cache);
+    if (final) rows.push(...cacheWriteHints(this.runCache).map((hint) => padTitle(pc, 'Recording') + hint));
     if (final) rows.push(...this.repeatRows());
     if (this.skippedFailures.length > 0) {
       rows.push(padTitle(pc, 'Warnings') + pc.yellow(`${this.skippedFailures.length} skipped after failure`));

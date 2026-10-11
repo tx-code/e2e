@@ -18,7 +18,8 @@ export interface StackFrame {
 /** A position the report keeps: the file relative to the project root, POSIX separators, one-based line and column. */
 export type SourceLocation = StackFrame;
 
-const FRAME_PATTERN = /((?:file:\/\/)?\/[^):]+):(\d+):(\d+)\)?\s*$/;
+const FRAME_PATTERN = /((?:file:\/\/|[A-Za-z]:[\\/]|\\\\|\/).+?):(\d+):(\d+)\)?\s*$/;
+const WINDOWS_ROOT = /^(?:[A-Za-z]:[\\/]|\\\\)/;
 
 /**
  * `file` relative to `projectRoot` with POSIX separators, or nothing when the
@@ -28,11 +29,12 @@ const FRAME_PATTERN = /((?:file:\/\/)?\/[^):]+):(\d+):(\d+)\)?\s*$/;
  * prefix test does not.
  */
 export function projectRelativePath(projectRoot: string, file: string): string | undefined {
-  const relative = path.relative(projectRoot, file);
-  if (relative === '' || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+  const paths = WINDOWS_ROOT.test(projectRoot) ? path.win32 : path;
+  const relative = paths.relative(projectRoot, file);
+  if (relative === '' || relative === '..' || relative.startsWith(`..${paths.sep}`) || paths.isAbsolute(relative)) {
     return undefined;
   }
-  return relative.split(path.sep).join('/');
+  return relative.split(paths.sep).join('/');
 }
 
 /**
@@ -50,12 +52,12 @@ export function userFrame(stack: string | undefined, projectRoot: string | undef
     const withoutQuery = location.split('?')[0]!;
     let file: string;
     try {
-      file = withoutQuery.startsWith('file://') ? fileURLToPath(withoutQuery) : withoutQuery;
+      file = withoutQuery.startsWith('file://') ? fileURLToPath(withoutQuery, { windows: WINDOWS_ROOT.test(projectRoot) }) : withoutQuery;
     } catch {
       continue;
     }
-    if (projectRelativePath(projectRoot, file) === undefined) continue;
-    if (file.includes(`${path.sep}node_modules${path.sep}`)) continue;
+    const relative = projectRelativePath(projectRoot, file);
+    if (relative === undefined || relative.split('/').includes('node_modules')) continue;
     return { file, line: Number(line), column: Number(column) };
   }
   return undefined;

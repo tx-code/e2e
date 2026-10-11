@@ -154,12 +154,43 @@ function spent(document: Report1Document): Report1Document {
 }
 
 describe('renderMarkdownReport', () => {
+  it('identifies provider prompt caching without dividing cached input by input plus output', () => {
+    const document = page({ results: [passing] });
+    document.run.usage = { ...document.run.usage, modelTokens: 1000, modelCachedTokens: 80 };
+    const body = renderMarkdownReport(document);
+    expect(body).toContain('1.0k tokens (80 provider-cached input tokens)');
+    expect(body).not.toContain('8% cached');
+  });
+
+  it('explains unconfirmed recordings even when the test passed', () => {
+    const body = renderMarkdownReport(page({ results: [named({
+      title: 'unverified goal', status: 'passed', attempts: [attempt({ steps: [step({
+        index: 0, label: 'fill a field', kind: 'agent', api: 'agent.act',
+        cache: { mode: 'missed', reason: 'no-entry', replayedActions: 0, totalActions: 1, write: 'unconfirmed' },
+      })] })],
+    })] }));
+    expect(body).toContain('1 recording attempt not saved: no later verification passed. Add or fix a locator assertion or agent.assert.');
+  });
+
+  it.each([
+    ['not-written', 'the cache store did not write the recording'],
+    ['no-change', 'no state change could be verified for replay'],
+  ] as const)('explains the %s recording outcome', (write, explanation) => {
+    const body = renderMarkdownReport(page({ results: [named({
+      title: 'recording outcome', status: 'passed', attempts: [attempt({ steps: [step({
+        index: 0, label: 'goal', kind: 'agent', api: 'agent.act',
+        cache: { mode: 'missed', reason: 'no-entry', replayedActions: 0, totalActions: 1, write },
+      })] })],
+    })] }));
+    expect(body).toContain(`1 recording attempt not saved: ${explanation}`);
+  });
+
   it("leads with the counts and the spend, blocks each failure with its step and the agent's word, folds the flaky tests, and folds every test by file", () => {
     const body = renderMarkdownReport(spent(page({ status: 'failed', results: [passing, failing, flaky, skipped, judged] })), links);
     expect(body).toBe(
       [
         '### 🔴 e2e: 1 failed, 1 flaky, 2 passed, 1 skipped',
-        '4 agent steps · 1 replayed from cache · 17 model calls · 128.4k tokens (62% cached) · $0.31',
+        '4 agent steps · 1 replayed from cache · 17 model calls · 128.4k tokens (79.6k provider-cached input tokens) · $0.31',
         '',
         [
           // Paragraphs: the title with the line to look at under it; the error and the step in one lead; what the error and the agent said, quoted; the evidence.

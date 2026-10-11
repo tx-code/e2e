@@ -216,7 +216,7 @@ export function sumUsage(items: readonly { readonly usage: AiUsage }[]): AiUsage
 }
 
 /**
- * Tokens, cached share, and cost, `12.4k tokens · 38% cached · $0.01`, or
+ * Tokens, provider-cached input share, and cost, or
  * undefined when no model was used. The cached share is the part of the input
  * the provider served from its prompt cache, and appears only when that part
  * is not empty.
@@ -225,7 +225,7 @@ export function usageText(usage: AiUsage): string | undefined {
   if (usage.calls === 0) return undefined;
   const cached =
     usage.cachedTokens > 0 && usage.inputTokens > 0
-      ? ` · ${String(Math.round((usage.cachedTokens / usage.inputTokens) * 100))}% cached`
+      ? ` · ${String(Math.round((usage.cachedTokens / usage.inputTokens) * 100))}% input cached by provider`
       : '';
   const cost = usage.costUsd === undefined ? '' : ` · ${formatCost(usage.costUsd)}`;
   return `${formatTokens(usage.tokens)} tokens${cached}${cost}`;
@@ -240,23 +240,32 @@ export interface CacheTally {
   replayed: number;
   handedOff: number;
   missed: number;
+  unconfirmed: number;
+  notWritten: number;
+  noChange: number;
 }
 
 export function emptyCacheTally(): CacheTally {
-  return { replayed: 0, handedOff: 0, missed: 0 };
+  return { replayed: 0, handedOff: 0, missed: 0, unconfirmed: 0, notWritten: 0, noChange: 0 };
 }
 
 export function addCacheTally(into: CacheTally, counts: CacheTally): void {
   into.replayed += counts.replayed;
   into.handedOff += counts.handedOff;
   into.missed += counts.missed;
+  into.unconfirmed += counts.unconfirmed;
+  into.notWritten += counts.notWritten;
+  into.noChange += counts.noChange;
 }
 
 /** The trace cache's part in several step lists, by step. */
-export function stepsCacheTally(stepLists: readonly (readonly StepRecord[])[]): CacheTally {
+export function stepsCacheTally(stepLists: readonly (readonly { readonly cache?: StepRecord['cache'] }[])[]): CacheTally {
   const counts = emptyCacheTally();
   for (const steps of stepLists) {
     for (const step of steps) {
+      if (step.cache?.write === 'unconfirmed') counts.unconfirmed++;
+      if (step.cache?.write === 'not-written') counts.notWritten++;
+      if (step.cache?.write === 'no-change') counts.noChange++;
       switch (step.cache?.mode) {
         case 'self-finalized':
           counts.replayed += 1;
@@ -286,6 +295,16 @@ export function cacheText(pc: Colors, counts: CacheTally): string | undefined {
     counts.missed > 0 ? `${counts.missed} missed` : undefined,
   ].filter((part) => part !== undefined);
   return parts.length === 0 ? undefined : parts.join(pc.dim(' · '));
+}
+
+/** Explains recording outcomes independently of replay hits and provider token caching. */
+export function cacheWriteHints(counts: CacheTally): string[] {
+  const attempts = (count: number): string => `${count} recording attempt${count === 1 ? '' : 's'} not saved`;
+  return [
+    ...(counts.unconfirmed > 0 ? [`${attempts(counts.unconfirmed)}: no later verification passed. Add or fix a locator assertion or agent.assert.`] : []),
+    ...(counts.notWritten > 0 ? [`${attempts(counts.notWritten)}: the cache store did not write the recording. Check cache limits and the store.`] : []),
+    ...(counts.noChange > 0 ? [`${attempts(counts.noChange)}: no state change could be verified for replay.`] : []),
+  ];
 }
 
 /**
