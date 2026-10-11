@@ -141,6 +141,7 @@
             "group": "Platforms",
             "pages": [
               "web",
+              "webdriver",
               "mobile",
               "api-testing"
             ]

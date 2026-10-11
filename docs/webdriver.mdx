@@ -1,0 +1,94 @@
+---
+title: WebDriver
+description: Connect the e2e runner to an owned Selenium WebDriver session.
+icon: "window"
+---
+
+`@e2e-dev/webdriver` implements the public engine contract using Selenium.
+This package is available in this fork's workspace and has not been published
+to npm. Build `e2e` and the engine before consuming them through workspace or
+file dependencies. `e2e init` does not scaffold this engine yet.
+
+## Own a session per attempt
+
+The session factory runs in the worker for every attempt, repeats included.
+It receives the target's declared app, environment, and abort signal. Return
+a driver and a cleanup callback that releases only resources you created.
+An attached application keeps its existing document. Navigation is opt-in.
+
+```ts
+import type { E2EConfig } from 'e2e';
+import { webdriver } from '@e2e-dev/webdriver';
+import { Builder } from 'selenium-webdriver';
+
+export default {
+  targets: [{
+    app: { url: 'http://127.0.0.1:3000' },
+    engine: webdriver({
+      navigation: true,
+      async createSession() {
+        const driver = await new Builder().forBrowser('MicrosoftEdge').build();
+        return { driver, close: () => driver.quit() };
+      },
+    }),
+  }],
+  workers: 1,
+} satisfies E2EConfig;
+```
+
+For an embedded document, let the factory create or attach the driver, and
+leave `navigation` off. Select the intended window in the factory before
+returning it. The engine never selects a different document on its own.
+
+## Drive the flow through e2e
+
+```ts
+import { test } from '@e2e-dev/webdriver';
+import { expect } from 'e2e';
+
+test('fills the form', async ({ app, screen }) => {
+  await app.open('/');
+  await screen.getByLabel('Display name').fill('Sample');
+  await screen.getByRole('button', 'Apply').tap();
+  await expect(screen.getByRole('status', 'Result')).toContainText('Sample');
+});
+```
+
+Use `webdriver.locator(cssOrXPath)` for attributes that have no semantic
+query. `webdriver.evaluate` is for trusted test reads; use locator actions
+to keep input dispatch and its outcome in the e2e trace.
+
+<CodeGroup>
+```bash npm
+npx e2e run tests/form.e2e.ts --repeat-each 3 --reporter list,junit,markdown
+```
+```bash pnpm
+pnpm exec e2e run tests/form.e2e.ts --repeat-each 3 --reporter list,junit,markdown
+```
+```bash bun
+bunx e2e run tests/form.e2e.ts --repeat-each 3 --reporter list,junit,markdown
+```
+</CodeGroup>
+
+The runner owns assertions, retries, action recording, and reports. Add a
+model to use `agent.act`, then verify the goal with a locator assertion so
+the replay cache can save its actions. A stable replay needs no model call;
+changed controls can hand execution back to the model. See [Caching](/cache).
+
+## Measurements and limits
+
+Enable `metrics: true` to record observation, locator, and reference-resolution
+times through the local app-log channel. No document content is included in
+those measurements. Read model usage and cache outcomes separately from
+the e2e report; `agent.act` time includes model and input-dispatch latency.
+
+The initial verification target is Edge on Windows. Native main-document
+DOM queries and common input actions are implemented. Frames, shadow roots,
+Grid deployments, focused-field keyboard tools, coordinates, videos, and
+saved sessions have not been implemented or verified. Unsupported actions
+are not advertised to the agent.
+
+Screenshots require a host-provided `screenshot(session, context)` callback
+returning source-masked PNG bytes. When the host cannot prove masking, omit
+the callback; the engine then declares no screenshot capability. It does
+not expose unmasked model pixels.

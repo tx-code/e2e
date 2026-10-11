@@ -1,0 +1,26 @@
+{
+  "name": "@e2e-dev/webdriver",
+  "version": "0.1.0",
+  "description": "WebDriver engine for e2e",
+  "type": "module",
+  "license": "Apache-2.0",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "files": ["dist", "NOTICE"],
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json && node ../../scripts/stamp-dist.ts",
+    "prepublishOnly": "node ../../scripts/check-dist.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run"
+  },
+  "dependencies": { "selenium-webdriver": "4.48.0" },
+  "peerDependencies": { "e2e": ">=0.19.0 <1" },
+  "devDependencies": {
+    "e2e": "workspace:*",
+    "@types/selenium-webdriver": "^4.35.0",
+    "@types/node": "26.6.2",
+    "typescript": "7.0.2",
+    "vitest": "5.0.1"
+  },
+  "engines": { "node": "^22.22.3 || >=24.8.0" }
+}

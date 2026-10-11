@@ -55,6 +55,7 @@ and Flutter, each a standalone project with a passing suite.
 | --- | --- |
 | [`e2e`](https://www.npmjs.com/package/e2e) | The SDK, runner, and CLI. |
 | [`@e2e-dev/web`](https://www.npmjs.com/package/@e2e-dev/web) | Browser engine: Chromium, Firefox, and WebKit through Playwright. |
+| [`@e2e-dev/webdriver`](./packages/webdriver/README.md) | Fork package: Selenium WebDriver sessions through the public engine contract. Build from this workspace; not published to npm. |
 | [`@e2e-dev/mobile`](https://www.npmjs.com/package/@e2e-dev/mobile) | iOS and Android engine: simulators and emulators through agent-device. |
 | [`@e2e-dev/github`](https://www.npmjs.com/package/@e2e-dev/github) | Reporter that posts results as a pull request comment. |
 | [`@e2e-dev/kernel`](https://www.npmjs.com/package/@e2e-dev/kernel) | Kernel hosted browsers for the web engine. |
