@@ -129,6 +129,33 @@ WebDriver screenshots cover the page viewport, not Windows file dialogs or
 the desktop. These report artifacts do not enable model vision and are not
 uploaded by the testbed. Keep screenshot directories out of source control.
 
+### Annotating local screenshots
+
+The `@e2e-dev/webdriver/annotations` entry exports
+`screenshotAnnotationTools({ session, screenshot })`. `session` returns the
+current owned `WebDriverSession`; `screenshot(session, signal)` returns a
+trusted source-masked viewport PNG. Spread the returned tools into the
+agent's `tools` configuration.
+
+Ask the agent to record an annotated screenshot and name the controls and
+captions. Its `annotate_screenshot` tool accepts up to eight exact
+`{ role, name, text }` targets, draws numbered red boxes, and adds captions
+below the image. Both the unchanged original and the annotated copy are
+attached to that report step. No page edits or model image uploads occur.
+The default artifact store keeps files local; a custom uploading store
+changes that behavior.
+
+Targets must be unique, stable, uncovered and fully within the main-document
+viewport. The tool refuses unsuitable targets or image dimensions. It does
+not locate canvas objects, native dialogs or frame contents. Chinese captions
+require an installed CJK font. Captions are literal text, not proof of success
+or a secret-redaction mechanism. Keep assertions and source masking in place.
+
+Read-only tools are not replay actions. For fresh evidence on every run,
+use a separate evidence goal with caching disabled. See the neutral
+testbed's `tests/annotations.e2e.ts` and `e2e.native.config.ts` for a working
+natural-language example.
+
 ### Timing and unsupported operations
 
 Enable `metrics: true` to record observation, locator, and reference-resolution

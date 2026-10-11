@@ -3,13 +3,15 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Builder } from 'selenium-webdriver';
 import edge from 'selenium-webdriver/edge.js';
-import { webdriver } from '@e2e-dev/webdriver';
+import { webdriver, type WebDriverSession } from '@e2e-dev/webdriver';
+import { screenshotAnnotationTools } from '@e2e-dev/webdriver/annotations';
 import { captureWindowsProcess, windowsDialogTools, type WindowsProcess } from '@e2e-dev/webdriver/windows';
 import { chatgpt } from 'e2e/oauth/chatgpt';
 import type { E2EConfig } from 'e2e';
 import { testbedScreenshot } from './evidence.ts';
 
 let owner: WindowsProcess | undefined;
+let session: WebDriverSession | undefined;
 let saveDestination = '';
 const directory = path.resolve('.e2e/native-fixture');
 const sample = path.join(directory, 'sample.txt');
@@ -32,11 +34,15 @@ export default {
         const child = spawn('powershell.exe', ['-NoProfile', '-STA', '-File', 'native-dialog.ps1', '-ResultPath', path.join(directory, 'latest-selection.json'), '-InitialDirectory', directory, '-SaveAfterOpen'], { windowsHide: true, stdio: 'ignore' });
         try { owner = await captureWindowsProcess(child.pid!, attempt.signal); }
         catch (error) { child.kill(); await driver.quit(); throw error; }
-        return { driver, close: async () => { owner = undefined; if (child.exitCode === null) child.kill(); await driver.quit(); } };
+        session = { driver, close: async () => { session = undefined; owner = undefined; if (child.exitCode === null) child.kill(); await driver.quit(); } };
+        return session;
       },
     }),
   }],
   agents: { default: { model: chatgpt('gpt-6-astra'), maxModelCalls: 12,
-    tools: windowsDialogTools({ owner: () => owner, files: { sample }, saveFiles: { copy: () => saveDestination } }),
+    tools: {
+      ...windowsDialogTools({ owner: () => owner, files: { sample }, saveFiles: { copy: () => saveDestination } }),
+      ...screenshotAnnotationTools({ session: () => session, screenshot: testbedScreenshot }),
+    },
   } },
 } satisfies E2EConfig;

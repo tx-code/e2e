@@ -32,6 +32,35 @@ local app-log channel. The measurements contain no selectors, field values,
 or document text. They distinguish document observation and reference
 resolution from the model's time choosing an action.
 
+## Annotated screenshot evidence
+
+Import `screenshotAnnotationTools` from `@e2e-dev/webdriver/annotations`.
+Configure it with `session: () => activeSession` and a trusted
+`screenshot: (session, signal) => Promise<Uint8Array>` provider. The provider
+must return a source-masked viewport PNG without cropping, resizing its
+aspect ratio, or including the desktop. It must honor the signal where
+possible. Clear the active session during attempt cleanup.
+
+Spread the returned tools into an agent's `tools`. The agent can call
+`annotate_screenshot` with up to eight `{ role, name, text }` annotations.
+Role and accessible name must match exactly one main-document control.
+The tool draws red boxes, numbers and a caption panel below the screenshot,
+without modifying the page. Chinese text requires an installed CJK font.
+An obscured, stale, ambiguous, moving or offscreen target is refused rather
+than guessed. No frames, canvas-internal objects or native dialogs are supported.
+
+Original and annotated PNGs are attached to the current report step with
+unique names. The model receives artifact references, never pixels. The
+default artifact store is local; do not configure an uploading artifact
+store for private evidence. Captions are literal model-authored text, not
+assertions or automatically redacted secrets; do not put secrets in them.
+The screenshot provider remains responsible for masking page content.
+
+This is a read-only project tool, not a replayed action. A cached flow can
+skip it. Use a separate evidence goal with caching disabled when a fresh
+image is required. The native testbed config demonstrates registration;
+`tests/annotations.e2e.ts` demonstrates a natural-language request.
+
 ## Windows file dialogs
 
 `@e2e-dev/webdriver/windows` exports `captureWindowsProcess(pid)` and

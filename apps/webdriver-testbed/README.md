@@ -2,6 +2,15 @@
 
 ## Local screenshot checkpoints
 
+The native config also registers `annotate_screenshot`. Run
+`tests/annotations.e2e.ts` with `--config e2e.native.config.ts` to ask the
+agent to mark two page controls with Chinese captions. The trace links the
+original and the annotated PNG at the tool's step. No screenshot pixels
+are sent to the model. The test checks that page values were not changed.
+`tests/annotations-failure.e2e.ts` requests a missing target and is expected
+to fail without producing any annotated PNG. Run it separately with the
+same config to exercise the refusal path.
+
 `tests/screenshots.e2e.ts` captures before a change and after its assertion,
 and checks that the provider refuses password fields. The native agent flow
 also captures before Open/Save and after saved-content verification. Run
