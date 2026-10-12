@@ -32,6 +32,36 @@ local app-log channel. The measurements contain no selectors, field values,
 or document text. They distinguish document observation and reference
 resolution from the model's time choosing an action.
 
+## Explicit local Edge setup
+
+`@e2e-dev/webdriver/edge` exports `edgeSession(options?)` as a
+`createSession` factory. Supply `driverPath` or set `WEBDRIVER_EDGE_DRIVER`.
+It does not search for another driver or invoke Selenium Manager. Relative
+paths are resolved against the test project. Optional `browserPath` selects
+the installed Edge executable; this is a browser factory, not a Tauri host
+or an attachment to a daily browser profile.
+
+The factory checks the executable and SHA-256, starts its own loopback
+driver service, honors the runner's headed mode, and compares the actual
+browser/driver three-part version prefix. `runtimeVersion` can add a known
+version check before launch. Startup defaults to 30 seconds, configurable
+with `startupTimeoutMs` (1–120000); driver preflight is bounded to 5 seconds.
+Cleanup requests browser quit and driver shutdown with bounded waits. A
+cleanup failure is reported, not silently treated as readiness.
+
+`preflightEdgeDriver({ driverPath, runtimeVersion?, signal? })` performs
+only the executable/version/hash checks. The `e2e-webdriver-doctor
+[driver-executable] [runtime-version]` command wraps it (the path can also
+come from the environment). Exit 0 means preflight passed, 1 means failed,
+2 means incorrect invocation. It does not verify browser startup, model
+login, application readiness or isolation. It installs and downloads nothing.
+
+The engine releases a claimed session if protocol initialization fails or
+is cancelled. A failed cleanup makes that engine instance unusable for
+later attempts, rather than hiding a potentially live resource. A factory
+that fails before returning a session must clean its own partial resources;
+`edgeSession` does this for its own driver/browser resources.
+
 ## Page-only video
 
 Configure `video: { fps: 2, ffmpegPath: 'ffmpeg' }` alongside a trusted

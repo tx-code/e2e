@@ -93,6 +93,8 @@ class WebDriverSurface {
   private attempt: EngineAttemptContext | undefined;
   private artifactIndex = 0;
   private recorder: PageVideoRecorder | undefined;
+  private closing: Promise<void> | undefined;
+  private cleanupFailure: unknown;
 
   constructor(private readonly options: WebDriverOptions) {}
 
@@ -100,6 +102,7 @@ class WebDriverSurface {
   async start(attempt: EngineAttemptContext): Promise<void> {
     if (!this.info) throw new EngineError('INVALID_STATE', 'WebDriver engine is not initialized', { retryable: false });
     await this.close();
+    if (attempt.signal.aborted) throw new EngineError('CANCELLED', 'WebDriver setup cancelled before session creation', { retryable: false });
     this.attempt = attempt;
     this.artifactIndex = 0;
     const session = await this.options.createSession(this.info, attempt);
@@ -108,17 +111,38 @@ class WebDriverSurface {
       throw new EngineError('CANCELLED', 'WebDriver session arrived after the attempt ended', { retryable: false });
     }
     this.session = session;
-    await session.driver.manage().setTimeouts({ implicit: 0 });
+    try {
+      await raceAbort(session.driver.manage().setTimeouts({ implicit: 0 }), attempt.signal, 'WebDriver initialization');
+      if (attempt.signal.aborted || this.attempt !== attempt || this.session !== session) throw new EngineError('CANCELLED', 'WebDriver setup ended before initialization completed', { retryable: false });
+    } catch (cause) {
+      try { if (this.session === session) await this.close(); }
+      catch (cleanup) {
+        throw new EngineError('ENGINE_FAILURE', 'WebDriver initialization and cleanup both failed', { retryable: false, cause: new AggregateError([cause, cleanup]) });
+      }
+      if (attempt.signal.aborted) throw new EngineError('CANCELLED', 'WebDriver setup cancelled during initialization', { retryable: false, cause });
+      throw cause;
+    }
   }
 
   /** Releases only resources claimed by this attempt, also after a partial start. */
-  async close(): Promise<void> {
-    await this.recorder?.dispose();
+  close(): Promise<void> {
+    if (this.closing) return this.closing;
+    if (this.cleanupFailure !== undefined) return Promise.reject(new EngineError('ENGINE_FAILURE', 'Previous WebDriver cleanup failed; this engine cannot be reused', { retryable: false, cause: this.cleanupFailure }));
+    const recorder = this.recorder;
     this.recorder = undefined;
     const session = this.session;
     this.session = undefined;
     this.attempt = undefined;
-    if (session) await session.close();
+    this.closing = (async () => {
+      const failures: unknown[] = [];
+      try { await recorder?.dispose(); } catch (cause) { failures.push(cause); }
+      try { await session?.close(); } catch (cause) { failures.push(cause); }
+      if (failures.length) {
+        this.cleanupFailure = new AggregateError(failures);
+        throw new EngineError('ENGINE_FAILURE', 'WebDriver cleanup failed; this engine cannot be reused', { retryable: false, cause: this.cleanupFailure });
+      }
+    })().finally(() => { this.closing = undefined; });
+    return this.closing;
   }
 
   /** Refuses use outside an active attempt. */

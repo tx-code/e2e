@@ -1,9 +1,8 @@
 import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { Builder } from 'selenium-webdriver';
-import edge from 'selenium-webdriver/edge.js';
 import { webdriver, type WebDriverSession } from '@e2e-dev/webdriver';
+import { edgeSession } from '@e2e-dev/webdriver/edge';
 import { screenshotAnnotationTools } from '@e2e-dev/webdriver/annotations';
 import { captureWindowsProcess, windowsDialogTools, type WindowsProcess } from '@e2e-dev/webdriver/windows';
 import { chatgpt } from 'e2e/oauth/chatgpt';
@@ -27,15 +26,12 @@ export default {
         await writeFile(path.join(directory, 'latest-selection.json'), JSON.stringify({ result: 'pending' }));
         saveDestination = path.join(directory, `${attempt.attemptId}-saved.txt`);
         await writeFile(path.join(directory, 'expected.json'), JSON.stringify({ input: sample, output: saveDestination }));
-        const options = new edge.Options();
-        options.addArguments('--headless=new', '--no-first-run');
-        const builder = new Builder().forBrowser('MicrosoftEdge').setEdgeOptions(options);
-        if (info.env['WEBDRIVER_EDGE_DRIVER']) builder.setEdgeService(new edge.ServiceBuilder(info.env['WEBDRIVER_EDGE_DRIVER']));
-        const driver = await builder.build();
+        const browser = await edgeSession()(info, attempt);
+        const driver = browser.driver;
         const child = spawn('powershell.exe', ['-NoProfile', '-STA', '-File', 'native-dialog.ps1', '-ResultPath', path.join(directory, 'latest-selection.json'), '-InitialDirectory', directory, '-SaveAfterOpen'], { windowsHide: true, stdio: 'ignore' });
         try { owner = await captureWindowsProcess(child.pid!, attempt.signal); }
-        catch (error) { child.kill(); await driver.quit(); throw error; }
-        session = { driver, close: async () => { session = undefined; owner = undefined; if (child.exitCode === null) child.kill(); await driver.quit(); } };
+        catch (error) { child.kill(); await browser.close(); throw error; }
+        session = { driver, close: async () => { session = undefined; owner = undefined; if (child.exitCode === null) child.kill(); await browser.close(); } };
         return session;
       },
     }),

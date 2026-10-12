@@ -1,6 +1,5 @@
-import { Builder } from 'selenium-webdriver';
-import edge from 'selenium-webdriver/edge.js';
 import { webdriver } from '@e2e-dev/webdriver';
+import { edgeSession } from '@e2e-dev/webdriver/edge';
 import type { E2EConfig } from 'e2e';
 import { testbedScreenshot } from './evidence.ts';
 
@@ -12,15 +11,7 @@ export default {
     engine: webdriver({
       navigation: true,
       metrics: true,
-      async createSession(info) {
-        const options = new edge.Options();
-        options.addArguments('--headless=new', '--no-first-run');
-        const builder = new Builder().forBrowser('MicrosoftEdge').setEdgeOptions(options);
-        const executable = info.env['WEBDRIVER_EDGE_DRIVER'];
-        if (executable) builder.setEdgeService(new edge.ServiceBuilder(executable));
-        const driver = await builder.build();
-        return { driver, close: () => driver.quit() };
-      },
+      createSession: edgeSession(),
       screenshot: testbedScreenshot,
       video: { fps: 2, ffmpegPath: process.env.FFMPEG_PATH ?? 'ffmpeg' },
     }),

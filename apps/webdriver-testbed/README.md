@@ -1,5 +1,53 @@
 # WebDriver testbed
 
+## Reproducible environment check
+
+From the repository root, install the locked workspace dependencies and
+build the two packages directly with Corepack. Do not use `--force` or an unrelated global pnpm shim:
+
+```powershell
+corepack pnpm install --frozen-lockfile
+corepack pnpm --filter e2e run build
+corepack pnpm --filter @e2e-dev/webdriver run build
+```
+
+Install Edge and a matching EdgeDriver separately. Set its explicit path,
+then run the check from this directory (replace the example path):
+
+```powershell
+$env:WEBDRIVER_EDGE_DRIVER='C:\test-tools\msedgedriver.exe'
+node setup-check.mjs
+```
+
+This checks Node, built package versions and ordinary source-newer-than-dist
+edits, probes the driver, then runs two neutral cases three times and checks
+their report/PNG evidence and clean attempts. Build freshness uses local
+timestamps, not a cryptographic source attestation. Evidence goes into a
+new `.e2e-setup-check-*` directory each time. No model calls, browser downloads,
+package installs, global PATH changes or daily application shutdowns occur
+inside this command. Missing or mismatched prerequisites fail at a named stage.
+
+Use `--preflight-only` to skip browser smoke. Use `--video` to additionally
+require FFmpeg with libx264 and request video artifacts; `FFMPEG_PATH` can
+select its executable. Video decoding is not certified by this check.
+Model login and Tauri application isolation remain separate requirements.
+
+The native and standard configs now require the explicit driver variable;
+they no longer fall back to Selenium Manager. Browser/driver versions and
+driver hash are recorded in the attempt environment.
+
+Core Playwright suites are a different environment. If their pinned Chromium
+is missing, install it explicitly when network access is available, preserving
+other tools' browser caches:
+
+```powershell
+$env:PLAYWRIGHT_SKIP_BROWSER_GC='1'
+node packages/web/dist/bin.js install chromium
+```
+
+Run that last command from the repository root. It intentionally downloads
+a browser; `setup-check.mjs` never runs it automatically.
+
 ## Judgment capability acceptance
 
 The live suite uses the stored subscription login with `gpt-6-astra`,

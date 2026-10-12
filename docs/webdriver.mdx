@@ -110,6 +110,29 @@ dialog types cannot select files. File selection, saving and cancellation are
 mutating project tools and are not zero-call cache replays. Use a separate
 preparation step, then verify DOM goals with locator assertions.
 
+### Explicit Edge environment setup
+
+Use `edgeSession()` from `@e2e-dev/webdriver/edge` as the `createSession`
+factory for local Edge tests. It requires an explicit `driverPath` option
+or `WEBDRIVER_EDGE_DRIVER`, with no Selenium Manager fallback or download.
+Optional `browserPath`, `runtimeVersion` and `startupTimeoutMs` configure
+the installed browser, known runtime and startup budget. Actual driver and
+browser versions and the driver digest are recorded for each attempt.
+
+`preflightEdgeDriver` and the `e2e-webdriver-doctor` CLI check the explicit
+executable before opening a session. A successful preflight does not prove
+application readiness, model login or Tauri isolation. The owned Edge
+factory distinguishes driver startup, browser session and runtime checks,
+and cleans partial resources on failure. The engine also releases a session
+when its own protocol initialization fails or is cancelled; failed cleanup
+prevents that engine instance from being reused.
+
+The neutral testbed's `node setup-check.mjs` checks dependencies/build state,
+driver preflight and three repeats of browser smoke with no model calls or
+automatic installation. `--preflight-only` stops before browser creation;
+`--video` also checks FFmpeg and requests video artifacts. See its README
+for setup commands and the separate requirements of Playwright-based suites.
+
 ### Local screenshot evidence
 
 With a trusted `screenshot` provider configured, call

@@ -12,6 +12,7 @@
     "apps/webdriver-testbed/native-dialog-check.mjs",
     "apps/webdriver-testbed/tests/**/*.ts",
     "apps/webdriver-testbed/server.mjs",
+    "apps/webdriver-testbed/setup-check.mjs",
     "apps/webdriver-testbed/summarize-benchmark.mjs",
     "apps/testbed/e2e.config.ts",
     "apps/testbed/e2e.*.config.ts",

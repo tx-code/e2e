@@ -1,5 +1,5 @@
 {
   "name": "@e2e-dev/webdriver-testbed", "private": true, "type": "module",
-  "scripts": { "test": "e2e run tests/controls.e2e.ts --reporter list,junit,markdown", "typecheck": "tsc --noEmit" },
-  "devDependencies": { "e2e": "workspace:*", "@e2e-dev/webdriver": "workspace:*", "selenium-webdriver": "4.48.0", "@types/selenium-webdriver": "^4.35.0", "ai": "7.0.127", "@ai-sdk/openai": "4.0.90", "typescript": "7.0.2", "@types/node": "26.6.2" }
+  "scripts": { "test": "e2e run tests/controls.e2e.ts --reporter list,junit,markdown", "typecheck": "tsc --noEmit", "setup:check": "node setup-check.mjs" },
+  "devDependencies": { "e2e": "workspace:*", "@e2e-dev/webdriver": "workspace:*", "ai": "7.0.127", "@ai-sdk/openai": "4.0.90", "typescript": "7.0.2", "@types/node": "26.6.2" }
 }
