@@ -1,0 +1,12 @@
+{
+  "repeats": 1,
+  "model": { "provider": "fixture", "model": "scripted-judgment" },
+  "cases": [
+    { "file": "tests/mechanisms.e2e.ts", "title": "judgment repairs one malformed response", "target": "edge", "screenshots": 2, "steps": [{ "api": "agent.assert", "status": "passed", "minCalls": 2, "maxCalls": 2, "allowFailedModelRequests": true }] },
+    { "file": "tests/mechanisms.e2e.ts", "title": "judgment refuses a second malformed response", "target": "edge", "screenshots": 2, "steps": [{ "api": "agent.assert", "status": "failed", "errorCode": "MODEL_OUTPUT_INVALID", "minCalls": 2, "maxCalls": 2, "allowFailedModelRequests": true }] },
+    { "file": "tests/mechanisms.e2e.ts", "title": "judgment preserves provider failure", "target": "edge", "screenshots": 2, "steps": [{ "api": "agent.assert", "status": "failed", "errorCode": "MODEL_PROVIDER_FAILED", "maxCalls": 1 }] },
+    { "file": "tests/mechanisms.e2e.ts", "title": "judgment enforces its deadline", "target": "edge", "screenshots": 2, "steps": [{ "api": "agent.assert", "status": "failed", "errorCode": "STEP_TIMEOUT", "maxCalls": 1 }] },
+    { "file": "tests/mechanisms.e2e.ts", "title": "extraction repairs a schema-invalid value", "target": "edge", "screenshots": 2, "steps": [{ "api": "agent.extract", "status": "passed", "minCalls": 2, "maxCalls": 2 }] },
+    { "file": "tests/mechanisms.e2e.ts", "title": "independent checks reject schema-valid wrong data", "target": "edge", "screenshots": 2, "steps": [{ "api": "agent.extract", "status": "passed", "minCalls": 1, "maxCalls": 1 }] }
+  ]
+}

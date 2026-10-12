@@ -1,5 +1,50 @@
 # WebDriver testbed
 
+## Judgment capability acceptance
+
+The live suite uses the stored subscription login with `gpt-6-astra`,
+semantic inputs only, cache off and retries disabled. It declares eight
+cases: true/false/inconclusive assertions, correct/missing extraction,
+delayed readiness, static-page timeout and call-budget exhaustion. The
+fixture controls the state; fixed literal/locator checks provide the answer,
+not another model. Negative cases catch only their declared error code.
+
+```bash
+node node_modules/e2e/dist/cli/bin.js run tests/judgments.e2e.ts --config e2e.judgments.config.ts --repeat-each 3 --output .e2e-judgments --reporter list,junit,markdown
+node node_modules/@e2e-dev/webdriver/dist/acceptance-cli.js .e2e-judgments/report.json judgments.acceptance.json
+```
+
+Each assertion/extraction has a 30-second limit. Waiting uses at most four
+model calls (one in the budget-exhaustion case); the static timeout is 12
+seconds. The policy requires three results per case and checks expected
+step errors, model provenance and local screenshots. It does not rerun
+failures or choose the best repeat. These are smoke results, not a production
+accuracy estimate. Red negative `agent.*` step lines are expected; the outer
+test passes only when the declared error and independent checks match.
+
+Mechanism tests are separate and use **scripted responses**, not a live
+model. They exercise one repair, invalid output after repair, provider
+failure, deadline enforcement, extraction schema repair and an independent
+assertion rejecting schema-valid but factually wrong data through real
+Edge/WebDriver. Their displayed token usage is synthetic.
+
+```bash
+node node_modules/e2e/dist/cli/bin.js run tests/mechanisms.e2e.ts --config e2e.mechanisms.config.ts --output .e2e-mechanisms --reporter list,junit,markdown
+node node_modules/@e2e-dev/webdriver/dist/acceptance-cli.js .e2e-mechanisms/report.json mechanisms.acceptance.json
+```
+
+Keep the two reports separate. The gate currently covers report and PNG
+integrity, not complete process isolation, video decoding or CAM data
+correctness. Existing core Playwright integration tests still need their
+specified Chromium installation; this WebDriver suite does not stand in
+for those tests.
+
+`screenshots.acceptance.json` also checks the existing screenshot suite.
+With `--video`, its secure-input refusal case causes video cleanup to fail:
+the raw test can remain green, but the acceptance CLI must exit 1. This is
+a regression check for the distinction between runner verdict and complete
+report evidence, not a reason to permit unmasked screenshots.
+
 ## Page recordings
 
 Both configs declare sampled page video at 2 fps. Install FFmpeg with

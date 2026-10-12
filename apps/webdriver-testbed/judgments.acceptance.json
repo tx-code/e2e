@@ -1,0 +1,14 @@
+{
+  "repeats": 3,
+  "model": { "provider": "chatgpt.responses", "model": "gpt-6-astra" },
+  "cases": [
+    { "file": "tests/judgments.e2e.ts", "title": "assert accepts visible facts", "target": "edge", "screenshots": 2, "steps": [{ "api": "agent.assert", "status": "passed", "minCalls": 1, "maxCalls": 2 }] },
+    { "file": "tests/judgments.e2e.ts", "title": "assert rejects stale success", "target": "edge", "screenshots": 2, "steps": [{ "api": "agent.assert", "status": "failed", "errorCode": "ASSERTION_FAILED", "minCalls": 1, "maxCalls": 2 }] },
+    { "file": "tests/judgments.e2e.ts", "title": "assert refuses invisible evidence", "target": "edge", "screenshots": 2, "steps": [{ "api": "agent.assert", "status": "failed", "errorCode": "ASSERTION_INCONCLUSIVE", "minCalls": 1, "maxCalls": 2 }] },
+    { "file": "tests/judgments.e2e.ts", "title": "extract returns correct values", "target": "edge", "screenshots": 2, "steps": [{ "api": "agent.extract", "status": "passed", "minCalls": 1, "maxCalls": 2 }] },
+    { "file": "tests/judgments.e2e.ts", "title": "extract refuses missing data", "target": "edge", "screenshots": 2, "steps": [{ "api": "agent.extract", "status": "failed", "errorCode": "ASSERTION_INCONCLUSIVE", "minCalls": 1, "maxCalls": 2 }] },
+    { "file": "tests/judgments.e2e.ts", "title": "waitFor observes delayed readiness", "target": "edge", "screenshots": 2, "steps": [{ "api": "agent.waitFor", "status": "passed", "minCalls": 2, "maxCalls": 4 }] },
+    { "file": "tests/judgments.e2e.ts", "title": "waitFor times out on an unchanged page", "target": "edge", "screenshots": 2, "steps": [{ "api": "agent.waitFor", "status": "failed", "errorCode": "STEP_TIMEOUT", "minCalls": 1, "maxCalls": 1 }] },
+    { "file": "tests/judgments.e2e.ts", "title": "waitFor obeys its call budget", "target": "edge", "screenshots": 2, "steps": [{ "api": "agent.waitFor", "status": "failed", "errorCode": "STEP_BUDGET_EXHAUSTED", "minCalls": 1, "maxCalls": 1 }] }
+  ]
+}

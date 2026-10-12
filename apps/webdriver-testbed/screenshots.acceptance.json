@@ -1,0 +1,7 @@
+{
+  "repeats": 1,
+  "cases": [
+    { "file": "tests/screenshots.e2e.ts", "title": "local screenshots document a verified state change", "target": "edge", "screenshots": 2, "steps": [] },
+    { "file": "tests/screenshots.e2e.ts", "title": "screenshot provider refuses a page containing secure input", "target": "edge", "screenshots": 0, "steps": [{ "api": "app.screenshot", "status": "failed", "errorCode": "UNSUPPORTED_CAPABILITY" }] }
+  ]
+}

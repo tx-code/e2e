@@ -182,6 +182,28 @@ the runner cleanup budget. Temporary frames are removed on stop/dispose.
 The final MP4 lives under the attempt's `video/` directory. Sampling and
 encoding add overhead, so enable recording only for runs that need it.
 
+### Judgment acceptance checks
+
+The neutral testbed includes separate live and scripted suites for
+`agent.assert`, `agent.waitFor` and `agent.extract`. The live suite runs
+eight positive/negative cases three times with semantic inputs, no retries
+and no action cache. Scripted mechanism responses test repair, protocol
+errors, provider errors and deadlines; they do not measure model accuracy.
+
+`@e2e-dev/webdriver/acceptance` exports
+`checkAcceptance(report, policy, artifactsRoot)`. Its `e2e-acceptance`
+CLI takes a report JSON and a policy JSON. Policies declare cases, repeats,
+required step outcomes and screenshot counts, with optional model identity
+and call bounds. Expected negative steps must match exact error codes.
+Required cases cannot be skipped or pass only after retries. Cleanup and
+secondary errors reject the report even when its original verdict is green.
+
+The checker reads local PNG evidence, verifies containment, recorded
+size/digest and decoding, and never overwrites the report. This is only a
+report-and-PNG check: it trusts the producer and does not prove capture
+freshness, masking correctness, application isolation, video integrity or
+business-file correctness. Those remain separate acceptance requirements.
+
 ### Timing and unsupported operations
 
 Enable `metrics: true` to record observation, locator, and reference-resolution

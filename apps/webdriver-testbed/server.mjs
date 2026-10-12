@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { judgmentPage } from './judgment-page.mjs';
 
 const html = `<!doctype html><html lang="en"><title>WebDriver testbed</title>
 <main><h1>Form controls</h1>
@@ -18,6 +19,8 @@ document.getElementById('replace').onclick = () => { const n=document.getElement
 
 const server = http.createServer((_request, response) => {
   response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+  const url = new URL(_request.url ?? '/', 'http://127.0.0.1');
+  if (url.pathname === '/judgments') { response.end(judgmentPage(url.searchParams.get('delayed') === '1')); return; }
   const page = process.env.CHANGED_CONTROL === '1' ? html
     .replaceAll('id="apply"', 'id="commit"')
     .replaceAll("getElementById('apply')", "getElementById('commit')")

@@ -90,6 +90,43 @@ skip it. Use a separate evidence goal with caching disabled when a fresh
 image is required. The native testbed config demonstrates registration;
 `tests/annotations.e2e.ts` demonstrates a natural-language request.
 
+## Report acceptance
+
+`@e2e-dev/webdriver/acceptance` exports
+`checkAcceptance(report, policy, artifactsRoot)`, returning `{ passed, issues }`.
+The `e2e-acceptance <report.json> <policy.json>` CLI returns 0 only when the
+declared checks pass, 1 for a rejected report and 2 for unreadable inputs or
+incorrect invocation. It never rewrites the original report or evidence.
+
+The policy declares `repeats` and nonempty `cases`. Each case names `file`,
+`title` (the title path joined with ` > `), `target`, minimum `screenshots`,
+and `steps`. Each step rule names an `api`, `status` (`passed` or `failed`),
+an `errorCode` for an expected failure, and optional `minCalls`/`maxCalls`.
+There must be exactly one occurrence of each declared step API per attempt.
+`minCalls` also requires that many completed model requests and rejects
+failed model requests; deliberate protocol-error injection can explicitly
+set `allowFailedModelRequests: true`. Omit the minimum for a deliberate
+provider-failure or interrupted-request test. Do not relax live-model policy
+to conceal a service failure.
+An optional top-level `model: { provider, model }` checks model provenance.
+
+The gate refuses skipped required cases, duplicate/missing repeats, retries,
+flaky outcomes, cleanup failures, secondary errors, unexpected failed steps
+and model vision. Unselected, unexecuted catalogue entries are ignored;
+other selected cases must be declared. Serial groups are not supported.
+Local screenshots must remain under the real artifact root, belong to the
+attempt, match recorded size/SHA-256, declare complete source redaction and
+decode as PNG. Screenshot files cannot be shared across artifact entries.
+
+This is a **report-and-PNG gate**, not the complete desktop acceptance
+system. It trusts the report producer and trusted screenshot provider; a
+hash does not authenticate the report, establish capture freshness or prove
+masking was done correctly. It does not validate application isolation,
+video decoding, non-PNG attachments or business-file semantics. Required
+checks outside this scope need their own validators before overall product
+acceptance. See the neutral testbed's `judgments.acceptance.json` and
+`mechanisms.acceptance.json` for policies and separate live/scripted suites.
+
 ## Windows file dialogs
 
 `@e2e-dev/webdriver/windows` exports `captureWindowsProcess(pid)` and

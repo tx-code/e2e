@@ -7,6 +7,8 @@
     "apps/webdriver-testbed/e2e.cache.config.ts",
     "apps/webdriver-testbed/e2e.native.config.ts",
     "apps/webdriver-testbed/e2e.report.config.ts",
+    "apps/webdriver-testbed/e2e.judgments.config.ts",
+    "apps/webdriver-testbed/e2e.mechanisms.config.ts",
     "apps/webdriver-testbed/native-dialog-check.mjs",
     "apps/webdriver-testbed/tests/**/*.ts",
     "apps/webdriver-testbed/server.mjs",

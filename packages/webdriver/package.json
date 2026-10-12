@@ -16,6 +16,10 @@
     "./annotations": {
       "types": "./dist/annotations.d.ts",
       "default": "./dist/annotations.js"
+    },
+    "./acceptance": {
+      "types": "./dist/acceptance.d.ts",
+      "default": "./dist/acceptance.js"
     }
   },
   "files": [
@@ -23,6 +27,7 @@
     "native",
     "NOTICE"
   ],
+  "bin": { "e2e-acceptance": "./dist/acceptance-cli.js" },
   "scripts": {
     "build": "tsc --project tsconfig.build.json && node ../../scripts/stamp-dist.ts",
     "prepublishOnly": "node ../../scripts/check-dist.ts",
